@@ -143,6 +143,9 @@ fn print_maze<const N: usize>(width: usize, height: usize, passages: &mut Vec<(u
     print!("\n\n");
 }
 
+pub fn format_float(f: f32) -> String { format!("{}\0", f) }
+pub fn format_int(i: i32) -> String { format!("{}\0", i) }
+
 #[cfg(test)]
 
 #[test]
