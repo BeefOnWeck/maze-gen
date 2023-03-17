@@ -46,7 +46,7 @@ fn there_is_no_passage_here<const N: usize>(
     return true;
 }
 
-pub fn find_next_passage<const M: usize, const N: usize>(
+pub fn find_passages<const M: usize, const N: usize>(
     index: usize, 
     width: usize, 
     height: usize, 
@@ -68,7 +68,47 @@ pub fn find_next_passage<const M: usize, const N: usize>(
     for pass in potential_passages {
         if visited[pass] == false {
             passages.push((index,pass)).unwrap();
-            find_next_passage(pass, width, height, visited, passages, rng);
+            find_passages(pass, width, height, visited, passages, rng);
+        }
+    }
+}
+
+pub fn find_walls<const M: usize, const N: usize, const P: usize>(
+    width: usize, 
+    height: usize, 
+    passages: &mut Vec<(usize,usize),M>, 
+    horizontal_walls: &mut Vec<u16,N>,
+    vertical_walls: &mut Vec<u16,P>
+) {
+    // Find horizontal walls
+    for h in 0..height+1 {
+        // First and last rows contain all walls
+        if h == 0 || h == height {
+            horizontal_walls[h] = (0..width).fold(0b0 as u16, |acc, val| acc + (0b1 << val));
+        } else {
+            // For all other rows, check for walls below each cell
+            for w in 0..width {
+                let ind = h*width + w;
+                if there_is_no_passage_here(ind,ind-width,passages) { 
+                    horizontal_walls[h] = horizontal_walls[h] + (0b1 << w);
+                }
+            }
+        }
+    }
+
+    // Find vertical walls
+    for w in 0..width+1 {
+        // First and last columns contain all walls
+        if w == 0 || w == width {
+            vertical_walls[w] = (0..height).fold(0b0 as u16, |acc, val| acc + (0b1 << val));
+        } else {
+            // For all other columns, check for walls to the left of each cell
+            for h in 0..height {
+                let ind = h*width + w;
+                if there_is_no_passage_here(ind,ind-1,passages) { 
+                    vertical_walls[w] = vertical_walls[w] + (0b1 << h);
+                }
+            }
         }
     }
 }
@@ -135,15 +175,26 @@ pub fn wont_you_be_my_neighbor() {
 #[test]
 pub fn simple() {
     let index = 0;
-    const WIDTH: usize = 16; // number of horizontal cells in maze
-    const HEIGHT: usize = 16; // number of vertical cells in maze
+    const WIDTH: usize = 13; // number of horizontal cells in maze
+    const HEIGHT: usize = 13; // number of vertical cells in maze
     const NUM_CELLS: usize = WIDTH * HEIGHT;
-    const MAX_PASSAGES: usize = NUM_CELLS * 4; // memory to reserve for maze
+    const MAX_PASSAGES: usize = NUM_CELLS; // memory to reserve for maze
     let mut visited = Vec::<bool,NUM_CELLS>::new();
     visited.extend_from_slice(&[false;NUM_CELLS]).unwrap();
     let mut passages = Vec::<(usize,usize),MAX_PASSAGES>::new();
     let mut rng = SmallRng::seed_from_u64(11);
-    find_next_passage(index, WIDTH, HEIGHT, &mut visited, &mut passages, &mut rng);
+    find_passages(index, WIDTH, HEIGHT, &mut visited, &mut passages, &mut rng);
     
     print_maze(WIDTH, HEIGHT, &mut passages);
+
+    let mut horizontal_walls = Vec::<u16,{HEIGHT+1}>::new();
+    horizontal_walls.extend_from_slice(&[0b0000000000000000;{HEIGHT+1}]).unwrap();
+    let mut vertical_walls = Vec::<u16,{WIDTH+1}>::new();
+    vertical_walls.extend_from_slice(&[0b0000000000000000;{WIDTH+1}]).unwrap();
+
+    find_walls(WIDTH, HEIGHT, &mut passages, &mut horizontal_walls, &mut vertical_walls);
+
+    for hw in horizontal_walls { println!("{:#018b}", hw) }
+    println!("");
+    for vw in vertical_walls { println!("{:#018b}", vw) }
 }
