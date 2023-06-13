@@ -33,7 +33,7 @@ fn find_neighbors(index: usize, width: usize, height: usize) -> [Option<usize>;4
     return [up, down, left, right];
 }
 
-fn there_is_no_passage_here<const N: usize>(
+pub fn there_is_no_passage_here<const N: usize>(
     index: usize, 
     neighbor: usize, 
     passages: &mut Vec<(usize,usize), N>
