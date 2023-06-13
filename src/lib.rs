@@ -36,7 +36,7 @@ fn find_neighbors(index: usize, width: usize, height: usize) -> [Option<usize>;4
 pub fn there_is_no_passage_here<const N: usize>(
     index: usize, 
     neighbor: usize, 
-    passages: &mut Vec<(usize,usize), N>
+    passages: &Vec<(usize,usize), N>
 ) -> bool {
     for pass in passages {
         if (index == pass.0 && neighbor == pass.1) || (index == pass.1 && neighbor == pass.0) {
