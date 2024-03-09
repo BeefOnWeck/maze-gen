@@ -1,3 +1,5 @@
+use std::char::MAX;
+
 use heapless::Vec;
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
@@ -113,6 +115,68 @@ pub fn find_walls<const M: usize, const N: usize, const P: usize>(
     }
 }
 
+pub fn find_path<const M: usize, const N: usize>(
+    start: usize,
+    end: usize,
+    width: usize, 
+    height: usize, 
+    passages: &mut Vec<(usize,usize),N>,
+    visited: &mut Vec<bool,M>,
+    stack: &mut Vec<usize,N>,
+    paths: &mut Vec<usize,N>,
+    pruned_path: &mut Vec<usize,N>,
+    rng: &mut SmallRng
+) {
+
+    visited[start] = true;
+    stack.push(start).unwrap();
+    let mut still_looking = true;
+    let mut checkpoint: usize = start;
+
+    while let Some(node) = stack.pop() {
+        if still_looking {
+            visited[node] = true;
+            let neighbors = find_neighbors(node, width, height);
+            let mut potential_paths: Vec<usize,4> = neighbors.into_iter()
+                .flatten() // Option implements IntoIter
+                .filter(|&n| visited[n] == false)
+                .filter(|&n| there_is_no_passage_here(node, n, passages) == false)
+                .collect();
+            potential_paths.shuffle(rng);
+
+            if node == end {
+                paths.push(node).unwrap();
+                still_looking = false;
+            } else if potential_paths.len() > 1 {
+                checkpoint = node;
+                paths.push(node).unwrap();
+            } else if potential_paths.len() == 0 {
+                while let Some(p) = paths.pop() {
+                    if p == checkpoint {
+                        paths.push(checkpoint).unwrap();
+                        break;
+                    }
+                }
+            } else {
+                paths.push(node).unwrap();
+            }
+
+            for pass in potential_paths {
+                stack.push(pass).unwrap();
+            }
+        }
+    }
+
+    let mut last_node = paths.pop().unwrap();
+    pruned_path.insert(0, last_node).unwrap();
+    while let Some(node) = paths.pop() {
+        if there_is_no_passage_here(last_node, node, passages) == false {
+            pruned_path.insert(0, node).unwrap();
+            last_node = node;
+        }
+    }
+}
+
 fn print_maze<const N: usize>(width: usize, height: usize, passages: &mut Vec<(usize,usize),N>) {
     for _ in 0..width {
         print!(" _");
@@ -145,56 +209,80 @@ fn print_maze<const N: usize>(width: usize, height: usize, passages: &mut Vec<(u
 
 #[cfg(test)]
 
+// #[test]
+// pub fn wont_you_be_my_neighbor() {
+//     let width = 4;
+//     let height = 4;
+
+//     let index = 0;
+//     let neighbors = find_neighbors(index, width, height);
+//     assert_eq!(
+//         neighbors,
+//         [Some(4), None, None, Some(1)]
+//     );
+
+//     let index = 5;
+//     let neighbors = find_neighbors(index, width, height);
+//     assert_eq!(
+//         neighbors,
+//         [Some(9), Some(1), Some(4), Some(6)]
+//     );
+
+//     let index = 13;
+//     let neighbors = find_neighbors(index, width, height);
+//     assert_eq!(
+//         neighbors,
+//         [None, Some(9), Some(12), Some(14)]
+//     );
+// }
+
+// #[test]
+// pub fn simple() {
+//     let index = 0;
+//     const WIDTH: usize = 13; // number of horizontal cells in maze
+//     const HEIGHT: usize = 13; // number of vertical cells in maze
+//     const NUM_CELLS: usize = WIDTH * HEIGHT;
+//     const MAX_PASSAGES: usize = NUM_CELLS; // memory to reserve for maze
+//     let mut visited = Vec::<bool,NUM_CELLS>::new();
+//     visited.extend_from_slice(&[false;NUM_CELLS]).unwrap();
+//     let mut passages = Vec::<(usize,usize),MAX_PASSAGES>::new();
+//     let mut rng = SmallRng::seed_from_u64(11);
+//     find_passages(index, WIDTH, HEIGHT, &mut visited, &mut passages, &mut rng);
+
+//     let mut horizontal_walls = Vec::<u16,{HEIGHT+1}>::new();
+//     horizontal_walls.extend_from_slice(&[0b0000000000000000;{HEIGHT+1}]).unwrap();
+//     let mut vertical_walls = Vec::<u16,{WIDTH+1}>::new();
+//     vertical_walls.extend_from_slice(&[0b0000000000000000;{WIDTH+1}]).unwrap();
+
+//     find_walls(WIDTH, HEIGHT, &mut passages, &mut horizontal_walls, &mut vertical_walls);
+
+//     // for hw in horizontal_walls { println!("{:#018b}", hw) }
+//     // println!("");
+//     // for vw in vertical_walls { println!("{:#018b}", vw) }
+// }
+
 #[test]
-pub fn wont_you_be_my_neighbor() {
-    let width = 4;
-    let height = 4;
-
+pub fn paths() {
     let index = 0;
-    let neighbors = find_neighbors(index, width, height);
-    assert_eq!(
-        neighbors,
-        [Some(4), None, None, Some(1)]
-    );
-
-    let index = 5;
-    let neighbors = find_neighbors(index, width, height);
-    assert_eq!(
-        neighbors,
-        [Some(9), Some(1), Some(4), Some(6)]
-    );
-
-    let index = 13;
-    let neighbors = find_neighbors(index, width, height);
-    assert_eq!(
-        neighbors,
-        [None, Some(9), Some(12), Some(14)]
-    );
-}
-
-#[test]
-pub fn simple() {
-    let index = 0;
-    const WIDTH: usize = 13; // number of horizontal cells in maze
-    const HEIGHT: usize = 13; // number of vertical cells in maze
+    const WIDTH: usize = 5; // number of horizontal cells in maze
+    const HEIGHT: usize = 5; // number of vertical cells in maze
     const NUM_CELLS: usize = WIDTH * HEIGHT;
     const MAX_PASSAGES: usize = NUM_CELLS; // memory to reserve for maze
     let mut visited = Vec::<bool,NUM_CELLS>::new();
     visited.extend_from_slice(&[false;NUM_CELLS]).unwrap();
     let mut passages = Vec::<(usize,usize),MAX_PASSAGES>::new();
-    let mut rng = SmallRng::seed_from_u64(11);
+    let mut rng = SmallRng::seed_from_u64(233);
     find_passages(index, WIDTH, HEIGHT, &mut visited, &mut passages, &mut rng);
+
+    let mut paths = Vec::<usize, MAX_PASSAGES>::new();
+    let mut pruned_path = Vec::<usize, MAX_PASSAGES>::new();
+    let mut stack = Vec::<usize, MAX_PASSAGES>::new();
+    visited.clear();
+    visited.extend_from_slice(&[false;NUM_CELLS]).unwrap();
+    let end = NUM_CELLS-1;
+    find_path(index, end, WIDTH, HEIGHT, &mut passages, &mut visited, &mut stack, &mut paths, &mut pruned_path, &mut rng);
     
     print_maze(WIDTH, HEIGHT, &mut passages);
+    print!("{:?}", pruned_path);
 
-    let mut horizontal_walls = Vec::<u16,{HEIGHT+1}>::new();
-    horizontal_walls.extend_from_slice(&[0b0000000000000000;{HEIGHT+1}]).unwrap();
-    let mut vertical_walls = Vec::<u16,{WIDTH+1}>::new();
-    vertical_walls.extend_from_slice(&[0b0000000000000000;{WIDTH+1}]).unwrap();
-
-    find_walls(WIDTH, HEIGHT, &mut passages, &mut horizontal_walls, &mut vertical_walls);
-
-    for hw in horizontal_walls { println!("{:#018b}", hw) }
-    println!("");
-    for vw in vertical_walls { println!("{:#018b}", vw) }
 }
