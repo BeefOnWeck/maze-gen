@@ -177,7 +177,7 @@ pub fn find_path<const M: usize, const N: usize>(
     }
 }
 
-fn next_node_in_path<const M: usize, const N: usize>(
+pub fn next_node_in_path<const M: usize, const N: usize>(
     start: usize,
     end: usize,
     width: usize, 
