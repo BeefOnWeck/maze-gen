@@ -131,7 +131,7 @@ pub fn find_path<const M: usize, const N: usize>(
     visited[start] = true;
     stack.push(start).unwrap();
     let mut still_looking = true;
-    let mut checkpoint: usize = start;
+    let mut checkpoint = start;
 
     while let Some(node) = stack.pop() {
         if still_looking {
@@ -174,6 +174,26 @@ pub fn find_path<const M: usize, const N: usize>(
             pruned_path.insert(0, node).unwrap();
             last_node = node;
         }
+    }
+}
+
+fn next_node_in_path<const M: usize, const N: usize>(
+    start: usize,
+    end: usize,
+    width: usize, 
+    height: usize, 
+    passages: &mut Vec<(usize,usize),N>,
+    visited: &mut Vec<bool,M>,
+    stack: &mut Vec<usize,N>,
+    paths: &mut Vec<usize,N>,
+    pruned_path: &mut Vec<usize,N>,
+    rng: &mut SmallRng
+) -> usize {
+    find_path(start, end, width, height, passages, visited, stack, paths, pruned_path, rng);
+    if pruned_path.len() > 1 {
+        pruned_path.remove(1)
+    } else {
+        start
     }
 }
 
@@ -264,14 +284,14 @@ fn print_maze<const N: usize>(width: usize, height: usize, passages: &mut Vec<(u
 #[test]
 pub fn paths() {
     let index = 0;
-    const WIDTH: usize = 5; // number of horizontal cells in maze
-    const HEIGHT: usize = 5; // number of vertical cells in maze
+    const WIDTH: usize = 13; // number of horizontal cells in maze
+    const HEIGHT: usize = 13; // number of vertical cells in maze
     const NUM_CELLS: usize = WIDTH * HEIGHT;
     const MAX_PASSAGES: usize = NUM_CELLS; // memory to reserve for maze
     let mut visited = Vec::<bool,NUM_CELLS>::new();
     visited.extend_from_slice(&[false;NUM_CELLS]).unwrap();
     let mut passages = Vec::<(usize,usize),MAX_PASSAGES>::new();
-    let mut rng = SmallRng::seed_from_u64(233);
+    let mut rng = SmallRng::seed_from_u64(42);
     find_passages(index, WIDTH, HEIGHT, &mut visited, &mut passages, &mut rng);
 
     let mut paths = Vec::<usize, MAX_PASSAGES>::new();
@@ -283,6 +303,12 @@ pub fn paths() {
     find_path(index, end, WIDTH, HEIGHT, &mut passages, &mut visited, &mut stack, &mut paths, &mut pruned_path, &mut rng);
     
     print_maze(WIDTH, HEIGHT, &mut passages);
-    print!("{:?}", pruned_path);
+    print!("{:?}\n", pruned_path);
+    visited.clear();
+    visited.extend_from_slice(&[false;NUM_CELLS]).unwrap();
+    paths.clear();
+    pruned_path.clear();
+    stack.clear();
+    print!("{}\n", next_node_in_path(index, end, WIDTH, HEIGHT, &mut passages, &mut visited, &mut stack, &mut paths, &mut pruned_path, &mut rng));
 
 }
